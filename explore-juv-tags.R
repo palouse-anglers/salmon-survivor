@@ -52,26 +52,3 @@ df |>
 
 
 
-salmon-survivor/
-└── www/
-    └── death_screens/
-        ├── avian_tern.png          # Caspian tern — estuary/Columbia mouth
-        ├── avian_cormorant.png     # Cormorant — East Sand Island
-        ├── avian_pelican.png       # Pelican — local Walla Walla hotspots
-        ├── avian_merganser.png     # Merganser — tributaries
-        ├── dam_lower_granite.png   # Lower Granite Dam painting
-        ├── dam_mcnary.png          # McNary Dam
-        ├── dam_bonneville.png      # Bonneville Dam
-        ├── dam_john_day.png        # John Day Dam
-        ├── predator_pikeminnow.png # Northern Pikeminnow
-        ├── predator_sealion.png    # Sea Lion — Bonneville tailrace
-        ├── predator_bass.png       # Smallmouth Bass — reservoirs
-        ├── ocean_harvest.png       # Commercial fishing
-        ├── ocean_orca.png          # Orca
-        ├── ocean_warmblob.png      # El Niño / warm blob
-        ├── win_spawning.png        # WIN screen — fish on redd
-        └── placeholder.png         # fallback for missing images
-    └── ui_images/
-        ├── logo.png
-        ├── juvenile_salmon.png
-        └── adult_salmon.png
