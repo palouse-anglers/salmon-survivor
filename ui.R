@@ -2,7 +2,32 @@
 # ui.R
 # ══════════════════════════════════════════════════════════════════════════════
 
+library(shiny)
 library(bslib)
+library(leaflet)
+library(dplyr)
+library(lubridate)
+library(readr)
+library(janitor)
+library(xml2)
+library(purrr)
+library(tibble)
+library(shinyjs)
+
+source("config/mortality_rates.R")
+source("data/sites.R")
+source("data/hotspots.R")
+source("data/questions.R")
+source("R/utils.R")
+source("R/parse_data.R")
+source("R/simulate_cohort.R")
+source("modules/mod_cohort.R")
+source("modules/mod_map.R")
+source("modules/mod_mortality.R")
+source("modules/mod_ocean.R")
+source("modules/mod_results.R")
+source("modules/mod_quiz.R")
+source("modules/mod_pregame_quiz.R")
 
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),
