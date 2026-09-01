@@ -4,186 +4,288 @@
 
 server <- function(input, output, session) {
 
+  all_stations <- c(STATIONS_OUTBOUND, STATIONS_OCEAN, STATIONS_RETURN)
+
   # ── Game state ──────────────────────────────────────────────────────────────
   gs <- reactiveValues(
-    step          = 0,          # current station index (0 = not started)
-    cohort        = NULL,       # simulated cohort tibble from simulate_cohort()
-    n_alive       = COHORT_START,
-    phase         = "outbound", # outbound | ocean | return | done
-    trigger_return = 0,
-    journey_log   = NULL
+    phase        = "pregame",   # pregame | playing | modal | done
+    step         = 0,
+    cohort       = NULL,
+    n_alive      = COHORT_START,
+    cohort_start = COHORT_START,
+    start_loc    = NULL,        # random start location
+    journey_log  = NULL,
+    current_ev   = NULL         # mortality event shown in modal
   )
 
-  all_stations <- c(STATIONS_OUTBOUND, STATIONS_RETURN)
-
-  # ── Load data on startup ────────────────────────────────────────────────────
+  # ── Load data ────────────────────────────────────────────────────────────────
   cohort_csv  <- load_cohort_csv()
   real_counts <- compute_real_counts(cohort_csv)
 
-  # ── Start / restart game ────────────────────────────────────────────────────
-  start_game <- function() {
-    gs$cohort      <- simulate_cohort(cohort_size = COHORT_START)
-    gs$step        <- 1
-    gs$n_alive     <- COHORT_START
-    gs$phase       <- "outbound"
-    gs$journey_log <- NULL
-    gs$trigger_return <- 0
+  # ── Pre-game quiz complete ────────────────────────────────────────────────────
+  pregame_done <- function(result) {
+    gs$cohort_start <- COHORT_START + result$bonus
+    gs$n_alive      <- gs$cohort_start
+    gs$start_loc    <- START_LOCATIONS[[sample(length(START_LOCATIONS), 1)]]
+    start_game()
   }
 
-  # Auto-start
-  observe({
-    if (is.null(gs$cohort)) start_game()
-  })
+  mod_pregame_quiz_server("pregame", on_complete = pregame_done)
 
-  # ── Current station ─────────────────────────────────────────────────────────
-  current_station_id <- reactive({
-    req(gs$step > 0, !is.null(gs$cohort))
-    all_stations[gs$step]
-  })
+  output$show_pregame <- reactive({ gs$phase == "pregame" })
+  outputOptions(output, "show_pregame", suspendWhenHidden = FALSE)
 
-  current_row <- reactive({
-    req(!is.null(gs$cohort), gs$step > 0)
-    stn <- all_stations[gs$step]
-    gs$cohort |> filter(station == stn)
-  })
+  # ── Start / restart ───────────────────────────────────────────────────────────
+  start_game <- function() {
+    gs$cohort      <- simulate_cohort(cohort_size = gs$cohort_start)
+    gs$step        <- 1
+    gs$n_alive     <- gs$cohort_start
+    gs$phase       <- "playing"
+    gs$journey_log <- NULL
+    gs$current_ev  <- NULL
+    advance_to_step(1)
+  }
 
-  # ── Advance to next station ─────────────────────────────────────────────────
-  observeEvent(input$next_station, {
-    req(gs$step < length(all_stations))
+  restart_game <- function() {
+    gs$phase        <- "pregame"
+    gs$cohort       <- NULL
+    gs$n_alive      <- COHORT_START
+    gs$cohort_start <- COHORT_START
+    gs$start_loc    <- NULL
+    gs$journey_log  <- NULL
+    gs$current_ev   <- NULL
+    gs$step         <- 0
+  }
 
-    # Log current station to journey
-    row <- current_row()
-    if (!is.null(row) && nrow(row) > 0) {
-      gs$journey_log <- bind_rows(gs$journey_log, row)
-      gs$n_alive     <- row$n_arrive
+  # ── Advance to a step ────────────────────────────────────────────────────────
+  advance_to_step <- function(step) {
+    req(!is.null(gs$cohort))
+    gs$step <- step
+    stn <- all_stations[step]
+
+    # Quiz stops — show quiz modal directly (handled by mod_pregame_quiz for
+    # in-river quizzes... actually handled by mortality modal via INGAME_QUESTIONS)
+    # For pure quiz stops with no mortality, skip straight to showing controls
+    if (grepl("^quiz_", stn)) {
+      # Quiz is embedded in the mortality modal via INGAME_QUESTIONS
+      # Build a zero-mortality event so modal still fires with just the quiz
+      row <- gs$cohort |> dplyr::filter(station == stn)
+      gs$current_ev <- list(
+        station  = stn,
+        n_arrive = gs$n_alive,
+        n_killed = 0L,
+        cause    = "quiz",
+        label    = "Conservation Stop",
+        phase    = "outbound"
+      )
+      gs$phase <- "modal"
+      return()
     }
 
-    gs$step <- gs$step + 1
-
-    # Check if entering ocean
-    if (all_stations[gs$step] == "ocean") {
-      gs$phase <- "ocean"
-    } else if (gs$step > which(all_stations == "ocean")) {
-      gs$phase <- "return"
+    # Ocean end — time skip card, no modal
+    if (stn == "ocean_end") {
+      gs$phase <- "ocean_end"
+      return()
     }
 
-    # Check win/lose
-    if (all_stations[gs$step] == "nursery_bridge") {
+    # Home — win!
+    if (stn == "home") {
       gs$phase <- "done"
+      return()
+    }
+
+    # Normal mortality stop
+    row <- gs$cohort |> dplyr::filter(station == stn)
+    if (nrow(row) > 0 && row$n_killed > 0) {
+      gs$current_ev <- as.list(row[1,])
+      gs$n_alive    <- row$n_arrive[1] - row$n_killed[1]  # apply kill immediately
+      gs$phase      <- "modal"
+    } else {
+      # No mortality — just update counter and move on
+      if (nrow(row) > 0) gs$n_alive <- row$n_arrive[1]
+      gs$phase <- "playing"
+    }
+  }
+
+  # ── Mortality modal: next button callback ─────────────────────────────────────
+  mortality_next <- function(fish_back) {
+    ev <- gs$current_ev
+
+    # Kill already applied — just add quiz bonus if any
+    gs$n_alive <- gs$n_alive + fish_back
+
+    # Log
+    gs$journey_log <- dplyr::bind_rows(
+      gs$journey_log,
+      tibble::tibble(
+        station   = ev$station %||% "",
+        label     = ev$label   %||% "",
+        n_arrive  = ev$n_arrive %||% 0,
+        n_killed  = ev$n_killed %||% 0,
+        fish_back = fish_back,
+        net_loss  = (ev$n_killed %||% 0) - fish_back
+      )
+    )
+
+    # Advance
+    next_step <- gs$step + 1
+    if (next_step > length(all_stations)) {
+      gs$phase <- "done"
+    } else {
+      gs$phase <- "playing"
+      advance_to_step(next_step)
+    }
+  }
+
+  # ── Next stop button (non-modal stops) ───────────────────────────────────────
+  observeEvent(input$next_station, {
+    req(gs$phase %in% c("playing", "modal"))
+    if (gs$phase == "modal") {
+      mortality_next(mortality_fish_back())
+    } else {
+      next_step <- gs$step + 1
+      if (next_step > length(all_stations)) {
+        gs$phase <- "done"
+      } else {
+        advance_to_step(next_step)
+      }
     }
   })
 
-  # ── Return trigger from ocean module ───────────────────────────────────────
-  trigger_return_rv <- reactiveVal(0)
+  # ── Ocean end → begin return ─────────────────────────────────────────────────
+  observeEvent(input$begin_return, {
+    req(gs$phase == "ocean_end")
+    next_step <- gs$step + 1
+    gs$phase  <- "playing"
+    advance_to_step(next_step)
+  })
 
-  observeEvent(trigger_return_rv(), {
-    if (trigger_return_rv() > 0) {
-      # Jump to bonneville_adult
-      gs$step  <- which(all_stations == "bonneville_adult")
-      gs$phase <- "return"
-    }
-  }, ignoreInit = TRUE)
-
-  # ── Cohort counter ──────────────────────────────────────────────────────────
+  # ── Modules ───────────────────────────────────────────────────────────────────
   mod_cohort_server("cohort", n_alive = reactive({ gs$n_alive }))
 
-  # ── Map ─────────────────────────────────────────────────────────────────────
-  # Station info reactive for map modal
   station_info_data <- reactive({
-    req(gs$step > 0)
-    row <- current_row()
-    req(!is.null(row), nrow(row) > 0)
-    stn <- STATIONS |> dplyr::filter(id == row$station)
-    rc  <- if (!is.null(real_counts)) {
-      r <- real_counts |> dplyr::filter(station == row$station)
+    req(gs$step > 0, !is.null(gs$cohort))
+    stn_id <- all_stations[gs$step]
+    stn    <- STATIONS |> dplyr::filter(id == stn_id)
+    rc     <- if (!is.null(real_counts)) {
+      r <- real_counts |> dplyr::filter(station == stn_id)
       if (nrow(r) > 0) r$real_count else NULL
     } else NULL
+    phase <- dplyr::case_when(
+      stn_id %in% STATIONS_OUTBOUND ~ "outbound",
+      stn_id %in% STATIONS_OCEAN   ~ "ocean",
+      TRUE                          ~ "return"
+    )
     list(
-      label      = row$label,
-      phase_lbl  = phase_label(row$phase),
-      rkm        = if (nrow(stn) > 0) stn$rkm else NA,
+      label      = if (nrow(stn)>0) stn$label else stn_id,
+      phase_lbl  = phase_label(phase),
+      rkm        = if (nrow(stn)>0 && !is.na(stn$rkm)) stn$rkm else NA,
       real_count = rc
     )
   })
 
   mod_map_server("map",
-    current_station   = current_station_id,
+    current_station   = reactive({ if(gs$step>0) all_stations[gs$step] else NULL }),
     station_info_data = station_info_data
   )
 
-  # ── Mortality panel ─────────────────────────────────────────────────────────
-  current_mortality <- reactive({
-    row <- current_row()
-    req(!is.null(row), nrow(row) > 0)
-    list(
-      n_killed = row$n_killed,
-      cause    = row$cause,
-      context  = NULL  # future: add per-cause context text
-    )
-  })
-  mod_mortality_server("mortality", mortality_event = current_mortality)
-
-  # ── Ocean module ─────────────────────────────────────────────────────────────
-  ocean_data <- reactive({
-    req(gs$phase == "ocean")
-    ocean_row <- gs$cohort |> filter(station == "ocean")
-    if (nrow(ocean_row) == 0) return(NULL)
-    list(
-      n_arrive     = ocean_row$n_arrive,
-      ocean_events = list()  # populated by simulate_cohort via attributes
-    )
-  })
-  mod_ocean_server("ocean",
-    ocean_data     = ocean_data,
-    trigger_return = trigger_return_rv
+  mortality_fish_back <- mod_mortality_server("mortality",
+    mortality_event = reactive({ if(gs$phase=="modal") gs$current_ev else NULL }),
+    on_next         = mortality_next
   )
-
-  # ── Results module ───────────────────────────────────────────────────────────
-  final_count <- reactive({
-    req(gs$phase == "done")
-    row <- gs$cohort |> filter(station == "nursery_bridge")
-    if (nrow(row) == 0) return(0)
-    row$n_arrive
-  })
 
   mod_results_server("results",
-    final_count  = final_count,
-    journey_log  = reactive({ gs$journey_log }),
-    on_restart   = start_game
+    final_count = reactive({ gs$n_alive }),
+    journey_log = reactive({ gs$journey_log }),
+    on_restart  = restart_game
   )
 
-  # ── Quiz ─────────────────────────────────────────────────────────────────────
   mod_quiz_server("quiz")
 
-  # Station info now handled via map modal — map_header kept minimal
-  output$map_header <- renderUI({
-    req(gs$step > 0)
-    row <- current_row()
-    req(!is.null(row), nrow(row) > 0)
-    span(style = "color:#4fc3f7;", row$label)
+  # ── UI outputs ────────────────────────────────────────────────────────────────
+
+  # Start location flavor text
+  output$start_flavor <- renderUI({
+    req(!is.null(gs$start_loc), gs$phase != "pregame")
+    div(
+      style = "background:#071a2e; border-left:3px solid #4fc3f7;
+               border-radius:4px; padding:10px 14px; margin-bottom:10px;
+               font-size:0.88em; color:#aad4e8; font-style:italic;",
+      paste0("\U0001f41f ", gs$start_loc$flavor)
+    )
   })
 
-  # ── Game controls ────────────────────────────────────────────────────────────
+  # Pregame summary
+  output$pregame_summary <- renderUI({
+    req(!is.null(gs$cohort_start), gs$phase != "pregame",
+        gs$cohort_start > COHORT_START)
+    bonus <- gs$cohort_start - COHORT_START
+    div(
+      style = "background:#071a0e; border:1px solid #2d8a4e; border-radius:6px;
+               padding:9px 14px; margin-bottom:10px; font-size:0.83em; color:#aaddbb;",
+      paste0("\U0001f33f Habitat bonus: +", bonus, " fish. Starting cohort: ",
+             gs$cohort_start, " fish.")
+    )
+  })
+
+  # Game controls
   output$game_controls <- renderUI({
-    req(!is.null(gs$cohort))
-
-    is_ocean <- gs$phase == "ocean"
-    is_done  <- gs$phase == "done"
-    at_end   <- gs$step >= length(all_stations)
-
-    if (is_done || at_end) return(NULL)
-    if (is_ocean) return(NULL)  # ocean module has its own button
+    req(gs$phase == "playing")
+    stn <- all_stations[gs$step]
 
     div(
-      style = "display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;",
-      actionButton("next_station", "Next Stop →",
-                   class = "btn-primary"),
-      actionButton("restart_game", "🔄 New Cohort",
-                   class = "btn-outline-secondary btn-sm"),
-      span(style = "font-size:0.8em; color:#aad4e8; align-self:center;",
+      style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;",
+      actionButton("restart_game", "\U0001f504 New Cohort",
+                   class="btn-outline-secondary btn-sm"),
+      span(style="font-size:0.8em; color:#aad4e8;",
            paste0("Stop ", gs$step, " of ", length(all_stations)))
     )
   })
 
-  observeEvent(input$restart_game, { start_game() })
+  # Ocean time-skip card
+  output$ocean_card <- renderUI({
+    req(gs$phase == "ocean_end")
+    div(
+      style = "background:linear-gradient(135deg,#0a1628,#0d2f4f);
+               border:1px solid #4fc3f7; border-radius:10px;
+               padding:20px 24px; color:white; margin-bottom:12px;",
+      h4(style="color:#4fc3f7; margin-top:0;", "\U0001f30a 1 to 3 Years at Sea"),
+      p(style="color:#aad4e8;",
+        "Your cohort has entered the Pacific Ocean. Scientists lose track of
+         most fish here — no antennas, no PIT readers. Only the ones that
+         survive will return."),
+      div(style="background:#071220; padding:12px; border-radius:6px; margin:12px 0;
+                 font-size:0.85em; color:#aad4e8;",
+        tags$b("Real data: "),
+        "Of 500 Walla Walla fish, only 5 returned to Bonneville Dam as adults.
+         That is a 1% smolt-to-adult return rate. Recovery requires 2\u20136%."
+      ),
+      actionButton("begin_return", "\U0001f420 Begin Adult Return \u2192",
+                   class="btn-primary btn-lg")
+    )
+  })
+
+  # Win/lose
+  output$show_results <- renderUI({
+    req(gs$phase == "done")
+    mod_results_ui("results")
+  })
+
+  observeEvent(input$restart_game, { restart_game() })
+
+  output$map_header <- renderUI({
+    req(gs$step > 0)
+    stn <- all_stations[gs$step]
+    s   <- STATIONS |> dplyr::filter(id == stn)
+    lbl <- if (nrow(s)>0) s$label else stn
+    span(style="color:#4fc3f7;", lbl)
+  })
+
+  output$next_stop_btn <- renderUI({
+    req(gs$phase %in% c("playing", "modal"), gs$step > 0)
+    actionButton("next_station", "Next Stop \u27a1\ufe0f",
+      class = "btn-primary w-100 mt-2"
+    )
+  })
+
 }

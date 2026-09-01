@@ -41,10 +41,29 @@ mod_map_server <- function(id, current_station, station_info_data) {
     # Draw base map once — no route lines, no flyTo
     output$map <- renderLeaflet({
       leaflet() |>
-        addProviderTiles("CartoDB.DarkMatter") |>
+        # ── Base tile layers ──────────────────────────────────────────────
+        leaflet::addProviderTiles("Esri.WorldImagery",   group = "Imagery") |>
+        leaflet::addProviderTiles("CartoDB.DarkMatter",  group = "Dark") |>
+        leaflet::addProviderTiles("Esri.NatGeoWorldMap", group = "Topo") |>
+        leaflet::addProviderTiles("OpenStreetMap",       group = "Street") |>
+
+        # ── USGS Hydrology overlay ────────────────────────────────────────
+        leaflet::addWMSTiles(
+          baseUrl = "https://basemap.nationalmap.gov/arcgis/services/USGSHydroCached/MapServer/WMSServer?",
+          layers  = "0",
+          options = leaflet::WMSTileOptions(
+            format      = "image/png32",
+            version     = "1.3.0",
+            minZoom     = 3,
+            maxZoom     = 16,
+            transparent = TRUE
+          ),
+          group = "Waterways"
+        ) |>
+
         setView(lng = -119.8, lat = 46.0, zoom = 7) |>
 
-        # All station markers (dim)
+        # ── Station markers (dim) ─────────────────────────────────────────
         addCircleMarkers(
           data        = STATIONS |> dplyr::filter(!is.na(lon)),
           lng         = ~lon, lat = ~lat,
@@ -52,10 +71,11 @@ mod_map_server <- function(id, current_station, station_info_data) {
           radius      = 6,
           color       = "#4fc3f7", fillColor = "#0d1f35",
           fillOpacity = 0.8, weight = 1.5,
-          label       = ~label
+          label       = ~label,
+          group       = "Stations"
         ) |>
 
-        # Predation hotspots from KMZ — always visible
+        # ── Predation hotspots from KMZ ───────────────────────────────────
         addCircles(
           data        = AVIAN_HOTSPOTS,
           lng         = ~lon, lat = ~lat,
@@ -63,8 +83,19 @@ mod_map_server <- function(id, current_station, station_info_data) {
           color       = "#e74c3c", fillColor = "#e74c3c",
           fillOpacity = 0.12, weight = 1,
           label       = ~paste0("\U0001f985 ", name, " \u2014 ", species),
-          group       = "hotspots"
-        )
+          group       = "Predation Hotspots"
+        ) |>
+
+        # ── Layer control ─────────────────────────────────────────────────
+        addLayersControl(
+          baseGroups    = c("Dark", "Imagery", "Topo", "Street"),
+          overlayGroups = c("Waterways", "Stations", "Predation Hotspots"),
+          options       = layersControlOptions(collapsed = TRUE)
+        ) |>
+
+        showGroup("Waterways") |>
+        showGroup("Stations") |>
+        showGroup("Predation Hotspots")
     })
 
     # Update current station marker only — no flyTo

@@ -21,6 +21,7 @@ source("config/mortality_rates.R")
 # ── Site metadata ─────────────────────────────────────────────────────────────
 source("data/sites.R")
 source("data/hotspots.R")
+source("data/questions.R")
 
 # ── Helpers and engines ───────────────────────────────────────────────────────
 source("R/utils.R")
@@ -34,6 +35,7 @@ source("modules/mod_mortality.R")
 source("modules/mod_ocean.R")
 source("modules/mod_results.R")
 source("modules/mod_quiz.R")
+source("modules/mod_pregame_quiz.R")
 
 # ── UI and Server ─────────────────────────────────────────────────────────────
 source("ui.R")

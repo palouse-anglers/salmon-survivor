@@ -1,82 +1,102 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # data/sites.R
-# Detection station metadata — coordinates, names, river km, type
-# Add new stations here without touching any other file
+# Station order, coordinates, and metadata
 # ══════════════════════════════════════════════════════════════════════════════
 
+# ── Random start locations ────────────────────────────────────────────────────
+START_LOCATIONS <- list(
+  list(
+    id      = "sfww",
+    label   = "South Fork Walla Walla River",
+    lat     = 45.9738, lon = -118.0207,
+    flavor  = "You hatched in the cold gravel of the South Fork Walla Walla River. The water is clear and cold. You have spent two years growing strong."
+  ),
+  list(
+    id      = "burlingame",
+    label   = "Burlingame Dam Pool",
+    lat     = 46.0631, lon = -118.3819,
+    flavor  = "You grew up in the deep pool below Burlingame Dam. The concrete structure looms above you. Today you feel the urge to move."
+  ),
+  list(
+    id      = "nursery",
+    label   = "Nursery Bridge",
+    lat     = 46.0100, lon = -118.3500,
+    flavor  = "Nursery Bridge pool has been your home for two winters. The days are getting longer. Something tells you it is time to go."
+  )
+)
+
+# ── All stations in order ─────────────────────────────────────────────────────
 STATIONS <- tibble::tribble(
-  ~id,                  ~label,                              ~lat,      ~lon,       ~rkm,  ~type,      ~river,
-  # Release site
-  "release",            "South Fork Walla Walla River",      45.9738,  -118.0207,  1050,  "release",  "Walla Walla",
-  # Four Lower Snake River Dams (simulated — no PIT detections in your CSV)
-  "iceharbor_juv",      "Ice Harbor Dam (Juvenile)",         46.2480,  -118.8760,   539,  "dam",      "Snake",
-  "lowermon_juv",       "Lower Monumental Dam (Juvenile)",   46.5620,  -118.5370,   592,  "dam",      "Snake",
-  "littlegoose_juv",    "Little Goose Dam (Juvenile)",       46.5870,  -118.0280,   638,  "dam",      "Snake",
-  "lowergranite_juv",   "Lower Granite Dam (Juvenile)",      46.6600,  -117.4300,   695,  "dam",      "Snake",
-  # Columbia River dams (real PIT data from your CSV)
-  "mcnary_juv",         "McNary Dam (Juvenile)",             45.9294,  -119.2982,   469,  "dam",      "Columbia",
-  "johnday_juv",        "John Day Dam (Juvenile)",           45.7154,  -120.6953,   347,  "dam",      "Columbia",
-  "bonneville_juv",     "Bonneville Dam (Juvenile)",         45.6441,  -121.9408,   234,  "dam",      "Columbia",
-  "estuary",            "Columbia River Estuary",            46.2500,  -123.9000,     0,  "estuary",  "Columbia",
-  "ocean",              "Pacific Ocean",                     46.5000,  -124.5000,    NA,  "ocean",    "Pacific",
-  # Adult return — Columbia
-  "bonneville_adult",   "Bonneville Dam (Adult Ladder)",     45.6441,  -121.9408,   234,  "dam",      "Columbia",
-  "thedalles_adult",    "The Dalles Dam (Adult Ladder)",     45.6044,  -121.1317,   307,  "dam",      "Columbia",
-  "johnday_adult",      "John Day Dam (Adult Ladder)",       45.7154,  -120.6953,   347,  "dam",      "Columbia",
-  "mcnary_adult",       "McNary Dam (Adult Ladder)",         45.9294,  -119.2982,   469,  "dam",      "Columbia",
-  # Adult return — Four Lower Snake River Dams
-  "iceharbor_adult",    "Ice Harbor Dam (Adult Ladder)",     46.2480,  -118.8760,   539,  "dam",      "Snake",
-  "lowermon_adult",     "Lower Monumental Dam (Adult)",      46.5620,  -118.5370,   592,  "dam",      "Snake",
-  "littlegoose_adult",  "Little Goose Dam (Adult Ladder)",   46.5870,  -118.0280,   638,  "dam",      "Snake",
-  "lowergranite_adult", "Lower Granite Dam (Adult Ladder)",  46.6600,  -117.4300,   695,  "dam",      "Snake",
-  # Home watershed
-  "burlingame",         "Burlingame Dam — Walla Walla R.",   46.0631,  -118.3819,   530,  "weir",     "Walla Walla",
-  "nursery_bridge",     "Nursery Bridge — Home! 🏆",         46.0100,  -118.3500,   560,  "spawning", "Walla Walla"
+  ~id,                   ~label,                          ~lat,      ~lon,       ~rkm,   ~type,      ~river,
+  # Outbound
+  "lower_ww",            "Lower Walla Walla River",       46.0571,  -118.8705,   NA,    "predation", "Walla Walla",
+  "crescent_island",     "Crescent Island",               46.0934,  -118.9310,   NA,    "predation", "Snake",
+  "lake_wallula",        "Lake Wallula",                  46.0023,  -118.9871,   NA,    "predation", "Snake/Columbia",
+  "quiz_1",              "Conservation Stop #1",          46.0000,  -119.1000,   NA,    "quiz",      NA,
+  "mcnary_juv",          "McNary Dam",                    45.9342,  -119.2968,   469,   "dam",       "Columbia",
+  "blalock_islands",     "Blalock Islands",               45.9125,  -119.6245,   NA,    "predation", "Columbia",
+  "lake_umatilla",       "Lake Umatilla",                 45.8472,  -119.7431,   NA,    "predation", "Columbia",
+  "quiz_2",              "Conservation Stop #2",          45.8000,  -120.0000,   NA,    "quiz",      NA,
+  "johnday_juv",         "John Day Dam",                  45.7155,  -120.6932,   347,   "dam",       "Columbia",
+  "miller_rocks",        "Miller Rocks Islands",          45.6544,  -120.8968,   NA,    "predation", "Columbia",
+  "lake_celilo",         "Lake Celilo",                   45.6561,  -120.9421,   NA,    "predation", "Columbia",
+  "quiz_3",              "Conservation Stop #3",          45.6300,  -121.0500,   NA,    "quiz",      NA,
+  "thedalles_juv",       "The Dalles Dam",                45.6142,  -121.1347,   307,   "dam",       "Columbia",
+  "lake_bonneville",     "Lake Bonneville",               45.7205,  -121.5253,   NA,    "predation", "Columbia",
+  "bonneville_juv",      "Bonneville Dam",                45.6432,  -121.9408,   234,   "dam",       "Columbia",
+  "estuary",             "Columbia River Estuary",        46.2500,  -123.9000,   0,     "estuary",   "Columbia",
+  # Ocean
+  "ocean_orca",          "Pacific Ocean — Orca",          46.5000,  -124.8000,   NA,    "ocean",     "Pacific",
+  "ocean_fishing",       "Pacific Ocean — Fishing",       46.8000,  -125.5000,   NA,    "ocean",     "Pacific",
+  "ocean_end",           "Pacific Ocean — Years Pass...", 47.0000,  -126.0000,   NA,    "ocean",     "Pacific",
+  # Adult return
+  "adult_fishing",       "Adult Return — Sport Fishing",  46.2500,  -123.5000,   NA,    "predation", "Columbia",
+  "adult_sealion",       "Bonneville — Sea Lion Gauntlet",45.6432,  -121.9408,   234,   "predation", "Columbia",
+  "adult_warmwater",     "Warm Water Migration",          45.8000,  -120.5000,   NA,    "hazard",    "Columbia",
+  "adult_dams",          "Adult Dam Passage",             45.9000,  -119.5000,   NA,    "dam",       "Columbia",
+  "adult_tire",          "Tire Chemical / 6PPD Runoff",   46.0200,  -118.9000,   NA,    "hazard",    "Walla Walla",
+  "adult_agrunoff",      "Agricultural Runoff",           46.0400,  -118.6000,   NA,    "hazard",    "Walla Walla",
+  "home",                "Home Spawning Grounds 🏆",      NA,        NA,          NA,    "spawning",  "Walla Walla"
 )
 
-# ── Avian predation hotspot zones (from KMZ — replaced by parse_data.R) ───────
-AVIAN_HOTSPOTS_DEFAULT <- tibble::tribble(
-  ~name,                        ~lat,      ~lon,      ~radius_m, ~species,
-  "East Sand Island Terns",     46.2641,  -123.9731,  2000,      "Caspian Tern",
-  "Crescent Island Cormorants", 46.0000,  -119.0000,  1500,      "Double-crested Cormorant",
-  "Walla Walla Pelicans",       46.1000,  -118.5000,  1000,      "American White Pelican",
-  "McNary Tailrace Birds",      45.9294,  -119.2982,   800,      "Mixed Avian"
-)
-
-# ── Station order — outbound then return ──────────────────────────────────────
+# ── Station sequences ─────────────────────────────────────────────────────────
 STATIONS_OUTBOUND <- c(
-  "release",
-  "iceharbor_juv", "lowermon_juv", "littlegoose_juv", "lowergranite_juv",
-  "mcnary_juv", "johnday_juv", "bonneville_juv",
-  "estuary", "ocean"
+  "lower_ww", "crescent_island", "lake_wallula",
+  "quiz_1",
+  "mcnary_juv", "blalock_islands", "lake_umatilla",
+  "quiz_2",
+  "johnday_juv", "miller_rocks", "lake_celilo",
+  "quiz_3",
+  "thedalles_juv", "lake_bonneville", "bonneville_juv",
+  "estuary"
+)
+
+STATIONS_OCEAN <- c(
+  "ocean_orca", "ocean_fishing", "ocean_end"
 )
 
 STATIONS_RETURN <- c(
-  "bonneville_adult", "thedalles_adult", "johnday_adult", "mcnary_adult",
-  "iceharbor_adult", "lowermon_adult", "littlegoose_adult", "lowergranite_adult",
-  "burlingame", "nursery_bridge"
+  "adult_fishing", "adult_sealion", "adult_warmwater",
+  "adult_dams", "adult_tire", "adult_agrunoff",
+  "home"
 )
 
-# ── Segment definitions ───────────────────────────────────────────────────────
-SEGMENTS <- tibble::tribble(
-  ~from,                ~to,                  ~mortality_key,             ~phase,     ~has_real_data,
-  "release",            "iceharbor_juv",      "release_to_snake",         "outbound", FALSE,
-  "iceharbor_juv",      "lowermon_juv",       "snake_dam",                "outbound", FALSE,
-  "lowermon_juv",       "littlegoose_juv",    "snake_dam",                "outbound", FALSE,
-  "littlegoose_juv",    "lowergranite_juv",   "snake_dam",                "outbound", FALSE,
-  "lowergranite_juv",   "mcnary_juv",         "snake_to_mcnary",          "outbound", FALSE,
-  "mcnary_juv",         "johnday_juv",        "mcnary_to_johnday",        "outbound", TRUE,
-  "johnday_juv",        "bonneville_juv",     "johnday_to_bonneville",    "outbound", TRUE,
-  "bonneville_juv",     "estuary",            "bonneville_to_estuary",    "outbound", TRUE,
-  "estuary",            "ocean",              "estuary",                  "outbound", TRUE,
-  "ocean",              "bonneville_adult",   "ocean",                    "return",   TRUE,
-  "bonneville_adult",   "thedalles_adult",    "adult_return",             "return",   TRUE,
-  "thedalles_adult",    "johnday_adult",      "adult_return",             "return",   TRUE,
-  "johnday_adult",      "mcnary_adult",       "adult_return",             "return",   TRUE,
-  "mcnary_adult",       "iceharbor_adult",    "adult_snake_return",       "return",   FALSE,
-  "iceharbor_adult",    "lowermon_adult",     "adult_snake_return",       "return",   FALSE,
-  "lowermon_adult",     "littlegoose_adult",  "adult_snake_return",       "return",   FALSE,
-  "littlegoose_adult",  "lowergranite_adult", "adult_snake_return",       "return",   FALSE,
-  "lowergranite_adult", "burlingame",         "adult_snake_return",       "return",   FALSE,
-  "burlingame",         "nursery_bridge",     "adult_return",             "return",   TRUE
+# ── Avian predation hotspots (from KMZ) ───────────────────────────────────────
+AVIAN_HOTSPOTS <- tibble::tribble(
+  ~name,                          ~lat,      ~lon,      ~radius_m, ~species,
+  "Alpowa Creek Mouth",           46.4157,  -117.2084,  800,       "Pelicans",
+  "Lower Tucannon River",         46.5527,  -118.1766,  1200,      "Walleye, Bass, Pikeminnow",
+  "Lower Walla Walla River",      46.0571,  -118.8705,  1500,      "Bass",
+  "Lake Wallula",                 46.0023,  -118.9871,  3000,      "Walleye, Pikeminnow, Bass, Birds",
+  "McNary Dam",                   45.9342,  -119.2968,  800,       "Dam + Predators",
+  "Lake Umatilla",                45.8472,  -119.7431,  2500,      "Walleye, Pikeminnow, Bass, Birds",
+  "John Day Dam",                 45.7155,  -120.6932,  800,       "Dam + Predators",
+  "The Dalles Dam",               45.6142,  -121.1347,  800,       "Dam + Predators",
+  "Bonneville Dam",               45.6432,  -121.9408,  800,       "Dam + Sea Lions",
+  "Lake Bonneville",              45.7205,  -121.5253,  2000,      "Birds, Pikeminnow, Bass",
+  "Lake Celilo",                  45.6561,  -120.9421,  2000,      "Pikeminnow, Bass",
+  "Bonneville to Estuary",        45.6191,  -121.9929,  1500,      "Sea Lions, Birds",
+  "Crescent Island",              46.0934,  -118.9310,  1000,      "Terns, Cormorants, Gulls, Pelicans",
+  "Blalock Islands",              45.9125,  -119.6245,  1000,      "Tern colonies",
+  "Miller Rocks Islands",         45.6544,  -120.8968,  1000,      "Gull colonies"
 )
