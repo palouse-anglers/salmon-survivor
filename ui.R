@@ -2,6 +2,8 @@
 # ui.R
 # ══════════════════════════════════════════════════════════════════════════════
 
+library(bslib)
+
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),
   window_title = "Salmon Survivor",
