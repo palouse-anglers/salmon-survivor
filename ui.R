@@ -28,6 +28,13 @@ source("modules/mod_ocean.R")
 source("modules/mod_results.R")
 source("modules/mod_quiz.R")
 source("modules/mod_pregame_quiz.R")
+source("modules/mod_intro_video.R")
+
+# ── YouTube intro video URL — change this to update the video ─────────────
+# ── Video URLs ────────────────────────────────────────────────────────────────
+INTRO_VIDEO_URL      <- "https://youtu.be/HxlAsTCAp4w?feature=shared"
+CORMORANT_VIDEO_URL  <- "https://www.dvidshub.net/video/embed/349996"
+DAM_VIDEO_URL        <- "https://ksps.pbslearningmedia.org/resource/nat11.sci.living.eco.extrmeas/nature-salmon-running-the-gauntlet-extreme-measures/?student=true"
 
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),
@@ -52,9 +59,42 @@ ui <- page_navbar(
       mod_pregame_quiz_ui("pregame")
     ),
 
-    # Main game layout — hidden until pregame is done
+    # Intro video — after difficulty selection, before game
     conditionalPanel(
-      condition = "!output.show_pregame",
+      condition = "output.show_intro_video",
+      mod_intro_video_ui("intro_video", INTRO_VIDEO_URL)
+    ),
+
+    # Dam video — plays before the first dam event
+    conditionalPanel(
+      condition = "output.show_dam_video",
+      mod_intro_video_ui(
+        "dam_video",
+        DAM_VIDEO_URL,
+        title   = "\U0001f6a7 Running the Gauntlet — Dams on the Columbia",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
+    # Cormorant predation video — plays before the first cormorant event
+    conditionalPanel(
+      condition = "output.show_cormorant_video",
+      mod_intro_video_ui(
+        "cormorant_video",
+        CORMORANT_VIDEO_URL,
+        title   = "\U0001f426 Avian Predation at the Columbia River",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
+    # Main game layout
+    conditionalPanel(
+      condition = paste(
+        "!output.show_pregame &&",
+        "!output.show_intro_video &&",
+        "!output.show_dam_video &&",
+        "!output.show_cormorant_video"
+      ),
       layout_columns(
         col_widths = c(4, 8),
 

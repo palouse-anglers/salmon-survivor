@@ -4,11 +4,12 @@
 # Each row = one station, with fish arriving, killed, and cause
 # ══════════════════════════════════════════════════════════════════════════════
 
-simulate_cohort <- function(cohort_size = COHORT_START) {
+simulate_cohort <- function(cohort_size = COHORT_START, difficulty = "medium") {
 
-  all_stations <- c(STATIONS_OUTBOUND, STATIONS_OCEAN, STATIONS_RETURN)
-  n <- cohort_size
-  rows <- list()
+  multiplier    <- DIFFICULTY_MULTIPLIERS[[difficulty]] %||% 1.0
+  all_stations  <- c(STATIONS_OUTBOUND, STATIONS_OCEAN, STATIONS_RETURN)
+  n             <- cohort_size
+  rows          <- list()
 
   for (stn in all_stations) {
 
@@ -61,7 +62,8 @@ simulate_cohort <- function(cohort_size = COHORT_START) {
     }
 
     # Apply mortality — add small random variance (+/- 15%) to keep replays fresh
-    base_kill <- mort$kill
+    # Apply mortality — scale by difficulty, then add +/- 15% variance
+    base_kill <- round(mort$kill * multiplier)
     variance  <- round(base_kill * runif(1, -0.15, 0.15))
     n_killed  <- max(0L, min(n, as.integer(base_kill + variance)))
     n         <- max(0L, n - n_killed)

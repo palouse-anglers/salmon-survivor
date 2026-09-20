@@ -6,6 +6,13 @@
 COHORT_START     <- 500
 PREGAME_BONUS_PER_Q <- 25
 
+# ── Difficulty multipliers ────────────────────────────────────────────────────
+DIFFICULTY_MULTIPLIERS <- list(
+  easy   = 0.5,
+  medium = 1.0,
+  hard   = 1.5
+)
+
 # ── Mortality kills per station ───────────────────────────────────────────────
 # Based on real Walla Walla data scaled to 500 fish
 # Edit these numbers to tune difficulty

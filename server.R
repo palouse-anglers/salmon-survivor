@@ -8,59 +8,88 @@ server <- function(input, output, session) {
 
   # ── Game state ──────────────────────────────────────────────────────────────
   gs <- reactiveValues(
-    phase        = "pregame",   # pregame | playing | modal | done
-    step         = 0,
-    cohort       = NULL,
-    n_alive      = COHORT_START,
-    cohort_start = COHORT_START,
-    start_loc    = NULL,        # random start location
-    journey_log  = NULL,
-    current_ev   = NULL         # mortality event shown in modal
+    phase                = "pregame",   # pregame | intro_video | dam_video | cormorant_video | playing | modal | done
+    step                 = 0,
+    step_processed       = FALSE,  # TRUE once advance_to_step has run for current step
+    cohort               = NULL,
+    n_alive              = COHORT_START,
+    cohort_start         = COHORT_START,
+    difficulty           = "medium",
+    start_loc            = NULL,
+    journey_log          = NULL,
+    current_ev           = NULL,
+    dam_video_seen       = FALSE,
+    cormorant_video_seen = FALSE
   )
 
   # ── Load data ────────────────────────────────────────────────────────────────
   cohort_csv  <- load_cohort_csv()
   real_counts <- compute_real_counts(cohort_csv)
 
-  # ── Pre-game quiz complete ────────────────────────────────────────────────────
+  # ── Pre-game quiz complete → show intro video ─────────────────────────────
   pregame_done <- function(result) {
     gs$cohort_start <- COHORT_START + result$bonus
     gs$n_alive      <- gs$cohort_start
+    gs$difficulty   <- result$difficulty %||% "medium"
     gs$start_loc    <- START_LOCATIONS[[sample(length(START_LOCATIONS), 1)]]
-    start_game()
+    gs$phase        <- "intro_video"
   }
 
   mod_pregame_quiz_server("pregame", on_complete = pregame_done)
+  mod_intro_video_server("intro_video", on_done = start_game)
+  mod_intro_video_server("dam_video", on_done = function() {
+    gs$dam_video_seen <- TRUE
+    gs$phase          <- "playing"   # back to map first
+    gs$step_processed <- TRUE        # next click → modal
+  })
+  mod_intro_video_server("cormorant_video", on_done = function() {
+    gs$cormorant_video_seen <- TRUE
+    gs$phase                <- "playing"   # back to map first
+    gs$step_processed       <- TRUE        # next click → modal
+  })
 
-  output$show_pregame <- reactive({ gs$phase == "pregame" })
-  outputOptions(output, "show_pregame", suspendWhenHidden = FALSE)
+  output$show_pregame          <- reactive({ gs$phase == "pregame" })
+  output$show_intro_video      <- reactive({ gs$phase == "intro_video" })
+  output$show_dam_video        <- reactive({ gs$phase == "dam_video" })
+  output$show_cormorant_video  <- reactive({ gs$phase == "cormorant_video" })
+  outputOptions(output, "show_pregame",         suspendWhenHidden = FALSE)
+  outputOptions(output, "show_intro_video",     suspendWhenHidden = FALSE)
+  outputOptions(output, "show_dam_video",       suspendWhenHidden = FALSE)
+  outputOptions(output, "show_cormorant_video", suspendWhenHidden = FALSE)
 
   # ── Start / restart ───────────────────────────────────────────────────────────
   start_game <- function() {
-    gs$cohort      <- simulate_cohort(cohort_size = gs$cohort_start)
-    gs$step        <- 1
-    gs$n_alive     <- gs$cohort_start
-    gs$phase       <- "playing"
-    gs$journey_log <- NULL
-    gs$current_ev  <- NULL
-    advance_to_step(1)
+    gs$cohort          <- simulate_cohort(cohort_size = gs$cohort_start,
+                                          difficulty  = gs$difficulty)
+    gs$step            <- 1
+    gs$step_processed  <- FALSE   # player must click Next Stop to begin
+    gs$n_alive         <- gs$cohort_start
+    gs$phase           <- "playing"
+    gs$journey_log     <- NULL
+    gs$current_ev      <- NULL
   }
 
   restart_game <- function() {
-    gs$phase        <- "pregame"
-    gs$cohort       <- NULL
-    gs$n_alive      <- COHORT_START
-    gs$cohort_start <- COHORT_START
-    gs$start_loc    <- NULL
-    gs$journey_log  <- NULL
-    gs$current_ev   <- NULL
-    gs$step         <- 0
+    gs$phase                <- "pregame"
+    gs$cohort               <- NULL
+    gs$n_alive              <- COHORT_START
+    gs$cohort_start         <- COHORT_START
+    gs$difficulty           <- "medium"
+    gs$start_loc            <- NULL
+    gs$journey_log          <- NULL
+    gs$current_ev           <- NULL
+    gs$step                 <- 0
+    gs$step_processed       <- FALSE
+    gs$dam_video_seen       <- FALSE
+    gs$cormorant_video_seen <- FALSE
   }
 
   # ── Advance to a step ────────────────────────────────────────────────────────
   advance_to_step <- function(step) {
     req(!is.null(gs$cohort))
-    gs$step <- step
+    gs$step           <- step
+    gs$step_processed <- TRUE
+    gs$current_ev     <- NULL   # clear any stale event
     stn <- all_stations[step]
 
     # Quiz stops — show quiz modal directly (handled by mod_pregame_quiz for
@@ -83,23 +112,25 @@ server <- function(input, output, session) {
     }
 
     # Ocean end — time skip card, no modal
-    if (stn == "ocean_end") {
-      gs$phase <- "ocean_end"
-      return()
-    }
+    if (stn == "ocean_end") { gs$phase <- "ocean_end"; return() }
+    if (stn == "home")      { gs$phase <- "done";      return() }
 
-    # Home — win!
-    if (stn == "home") {
-      gs$phase <- "done"
-      return()
-    }
-
-    # Normal mortality stop
     row <- gs$cohort |> dplyr::filter(station == stn)
     if (nrow(row) > 0 && row$n_killed > 0) {
       gs$current_ev <- as.list(row[1,])
-      gs$n_alive    <- row$n_arrive[1] - row$n_killed[1]  # apply kill immediately
-      gs$phase      <- "modal"
+      gs$n_alive    <- row$n_arrive[1] - row$n_killed[1]
+
+      # ── Show dam video before the first dam event ─────────────────────────
+      if (!gs$dam_video_seen &&
+          isTRUE(startsWith(gs$current_ev$cause, "dam_"))) {
+        gs$phase <- "dam_video"
+      # ── Show cormorant video before the first cormorant event ─────────────
+      } else if (!gs$cormorant_video_seen &&
+          isTRUE(gs$current_ev$cause == "avian_cormorant")) {
+        gs$phase <- "cormorant_video"
+      } else {
+        gs$phase <- "modal"
+      }
     } else {
       # No mortality — just update counter and move on
       if (nrow(row) > 0) gs$n_alive <- row$n_arrive[1]
@@ -142,6 +173,12 @@ server <- function(input, output, session) {
     req(gs$phase %in% c("playing", "modal"))
     if (gs$phase == "modal") {
       mortality_next(mortality_fish_back())
+    } else if (!gs$step_processed) {
+      # First click after game start — process the current step
+      advance_to_step(gs$step)
+    } else if (!is.null(gs$current_ev)) {
+      # Returning from a video — current_ev already set, just show the modal
+      gs$phase <- "modal"
     } else {
       next_step <- gs$step + 1
       if (next_step > length(all_stations)) {
