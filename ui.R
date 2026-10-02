@@ -34,7 +34,7 @@ source("modules/mod_intro_video.R")
 # ── Video URLs ────────────────────────────────────────────────────────────────
 INTRO_VIDEO_URL      <- "https://youtu.be/HxlAsTCAp4w?feature=shared"
 CORMORANT_VIDEO_URL  <- "https://www.dvidshub.net/video/embed/349996"
-DAM_VIDEO_URL        <- "https://ksps.pbslearningmedia.org/resource/nat11.sci.living.eco.extrmeas/nature-salmon-running-the-gauntlet-extreme-measures/?student=true"
+DAM_VIDEO_URL        <- "https://www.pbs.org/video/nature-education-extreme-measures/"
 
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),

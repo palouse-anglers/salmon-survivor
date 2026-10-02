@@ -87,7 +87,7 @@ DEATH_NARRATIVES <- list(
   tire_chemical   = "{n} adult fish were killed by 6PPD-quinone — a chemical from tire rubber that washes off roads during rain. Identified by UW researchers in 2020. No fix yet at scale.",
   ag_runoff       = "{n} fish were killed by agricultural runoff — pesticides, excess nutrients, and sediment from irrigation returns reduce dissolved oxygen and poison fish directly.",
   supersaturation = "Spill at the dam caused nitrogen supersaturation — like the bends in scuba diving. {n} fish died.",
-  other           = "{n} fish were lost to unknown causes — a reminder of how much we still don't know."
+  other           = "Quiz Time"
 )
 
 # ── Win condition ─────────────────────────────────────────────────────────────

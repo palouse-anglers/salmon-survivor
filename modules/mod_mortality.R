@@ -28,10 +28,12 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
                     DEATH_NARRATIVES[[ev$cause]] %||% DEATH_NARRATIVES[["other"]]))
       cause_label <- gsub("_", " ", toupper(ev$cause %||% "mortality"))
 
+      is_quiz <- ev$cause %in% c("other", "quiz")
+
       showModal(modalDialog(
         title = NULL,
-        easyClose = TRUE,
-        footer = modalButton("Close"),
+        easyClose = !is_quiz,
+        footer = if (is_quiz) uiOutput(ns("quiz_footer")) else modalButton("Close"),
         size = "m",
 
         # ── Artist image ──────────────────────────────────────────────
@@ -40,7 +42,10 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
                           display:block; border-radius:6px; margin-bottom:12px;"),
 
         div(style = "font-size:1.4em; font-weight:900; color:#e74c3c; margin-bottom:6px;",
-            paste0("\U0001f480 -", ev$n_killed, " fish")),
+            if (ev$cause %in% c("other", "quiz"))
+              paste0("\U0001f4dd Quiz Time")
+            else
+              paste0("\U0001f480 -", ev$n_killed, " fish")),
 
         p(style = "color:#555; font-size:0.9em; line-height:1.5; margin-bottom:14px;",
           narrative),
@@ -81,6 +86,12 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
     # Close modal
     observeEvent(input$close_modal, {
       removeModal()
+    })
+
+    # Quiz footer — only show Close button once quiz is answered
+    output$quiz_footer <- renderUI({
+      req(rv$quiz_answered)
+      modalButton("Close")
     })
 
     # Survivor count

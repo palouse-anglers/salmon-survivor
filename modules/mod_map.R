@@ -88,7 +88,7 @@ mod_map_server <- function(id, current_station, station_info_data) {
 
         # ── Layer control ─────────────────────────────────────────────────
         addLayersControl(
-          baseGroups    = c("Dark", "Imagery", "Topo", "Street"),
+          baseGroups    = c("Imagery", "Dark", "Topo", "Street"),
           overlayGroups = c("Waterways", "Stations", "Predation Hotspots"),
           options       = layersControlOptions(collapsed = TRUE)
         ) |>
