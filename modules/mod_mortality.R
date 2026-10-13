@@ -36,11 +36,6 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
         footer = if (is_quiz) uiOutput(ns("quiz_footer")) else modalButton("Close"),
         size = "m",
 
-        # ── Artist image ──────────────────────────────────────────────
-        tags$img(src = img_src,
-                 style = "width:100%; max-height:200px; object-fit:cover;
-                          display:block; border-radius:6px; margin-bottom:12px;"),
-
         div(style = "font-size:1.4em; font-weight:900; color:#e74c3c; margin-bottom:6px;",
             if (ev$cause %in% c("other", "quiz"))
               paste0("\U0001f4dd Quiz Time")
@@ -79,7 +74,11 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
         ),
 
         # ── Quiz section ──────────────────────────────────────────────
-        uiOutput(ns("quiz_section"))
+        uiOutput(ns("quiz_section")),
+
+        # ── Image at bottom ───────────────────────────────────────────
+        tags$img(src = img_src,
+                 style = "width:100%; display:block; border-radius:6px; margin-top:14px;")
       ))
     })
 

@@ -39,13 +39,19 @@ server <- function(input, output, session) {
   mod_intro_video_server("intro_video", on_done = start_game)
   mod_intro_video_server("dam_video", on_done = function() {
     gs$dam_video_seen <- TRUE
-    gs$phase          <- "playing"   # back to map first
-    gs$step_processed <- TRUE        # next click → modal
+    # Apply deferred fish count drop now that video is done
+    ev <- gs$current_ev
+    if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
+    gs$phase          <- "playing"
+    gs$step_processed <- TRUE        # next click -> modal
   })
   mod_intro_video_server("cormorant_video", on_done = function() {
     gs$cormorant_video_seen <- TRUE
-    gs$phase                <- "playing"   # back to map first
-    gs$step_processed       <- TRUE        # next click → modal
+    # Apply deferred fish count drop now that video is done
+    ev <- gs$current_ev
+    if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
+    gs$phase                <- "playing"
+    gs$step_processed       <- TRUE        # next click -> modal
   })
 
   output$show_pregame          <- reactive({ gs$phase == "pregame" })
@@ -118,18 +124,20 @@ server <- function(input, output, session) {
     row <- gs$cohort |> dplyr::filter(station == stn)
     if (nrow(row) > 0 && row$n_killed > 0) {
       gs$current_ev <- as.list(row[1,])
-      gs$n_alive    <- row$n_arrive[1] - row$n_killed[1]
 
       # ── Show dam video before the first dam event ─────────────────────────
       if (!gs$dam_video_seen &&
           isTRUE(startsWith(gs$current_ev$cause, "dam_"))) {
+        # Defer n_alive update — count drops when modal shows after video
         gs$phase <- "dam_video"
       # ── Show cormorant video before the first cormorant event ─────────────
       } else if (!gs$cormorant_video_seen &&
           isTRUE(gs$current_ev$cause == "avian_cormorant")) {
+        # Defer n_alive update — count drops when modal shows after video
         gs$phase <- "cormorant_video"
       } else {
-        gs$phase <- "modal"
+        gs$n_alive <- row$n_arrive[1] - row$n_killed[1]
+        gs$phase   <- "modal"
       }
     } else {
       # No mortality — just update counter and move on

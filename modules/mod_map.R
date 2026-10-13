@@ -98,23 +98,33 @@ mod_map_server <- function(id, current_station, station_info_data) {
         showGroup("Predation Hotspots")
     })
 
-    # Update current station marker only — no flyTo
+    # Update current station marker only
     observe({
       req(current_station())
       stn <- STATIONS |> dplyr::filter(id == current_station())
       req(nrow(stn) > 0, !is.na(stn$lon))
 
-      leafletProxy(ns("map")) |>
+      lat <- stn$lat[[1]]
+      lng <- stn$lon[[1]]
+
+      # flyTo via JS — reliably centers the map on the station
+      map_id <- session$ns("map")
+      shinyjs::runjs(sprintf(
+        "var map = HTMLWidgets.find('#%s').getMap(); map.flyTo([%f, %f], 9, {animate: true, duration: 1.2});",
+        map_id, lat, lng
+      ))
+
+      leafletProxy("map") |>
         clearGroup("current") |>
         # Glow ring
         addCircleMarkers(
-          lng = stn$lon, lat = stn$lat,
+          lng = lng, lat = lat,
           radius = 18, color = "#ff6b35", fillColor = "#ff6b35",
           fillOpacity = 0.18, weight = 2, group = "current"
         ) |>
         # Main dot
         addCircleMarkers(
-          lng = stn$lon, lat = stn$lat,
+          lng = lng, lat = lat,
           radius = 9, color = "#ff6b35", fillColor = "#ff6b35",
           fillOpacity = 0.95, weight = 2,
           popup = paste0(
