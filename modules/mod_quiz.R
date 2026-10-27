@@ -392,7 +392,7 @@ mod_quiz_server <- function(id) {
       tagList(
         p(class = "text-muted mb-1",
           paste("Question", idx, "of", length(rv$questions))),
-        h5(q$q),
+        h5(q$q, style = "color: #e8f4fd;"),
         div(
           lapply(seq_along(q$choices), function(i) {
             btn_class <- if (rv$answered) {
@@ -404,7 +404,11 @@ mod_quiz_server <- function(id) {
             } else {
               "btn-outline-primary w-100 mb-2 text-start"
             }
-            actionButton(ns(paste0("ans_", i)), q$choices[i], class = btn_class)
+            actionButton(
+              ns(paste0("ans_", i)), q$choices[i],
+              class = btn_class,
+              style = "color: #e8f4fd; white-space: normal;"
+            )
           })
         )
       )

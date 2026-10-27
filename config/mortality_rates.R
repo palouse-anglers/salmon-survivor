@@ -14,23 +14,24 @@ DIFFICULTY_MULTIPLIERS <- list(
 )
 
 # ── Mortality kills per station ───────────────────────────────────────────────
-# Based on real Walla Walla data scaled to 500 fish
-# Edit these numbers to tune difficulty
+# Rebalanced so medium difficulty reaches ocean with ~50-100 fish (no quizzes)
+# Quiz bonuses (3 x 50 = 150 fish) make a meaningful difference
+# Total outbound kills (medium): ~390 → ~110 fish reach ocean
 MORTALITY <- list(
   # Outbound
-  lower_ww         = list(kill = 40,  cause = "predator_bass",    label = "Bass Predation"),
-  crescent_island  = list(kill = 80,  cause = "avian_cormorant",  label = "Avian Predation"),
-  lake_wallula     = list(kill = 60,  cause = "pikeminnow",       label = "Mixed Predation"),
-  mcnary_juv       = list(kill = 70,  cause = "dam_mcnary",       label = "Dam Mortality"),
-  blalock_islands  = list(kill = 50,  cause = "avian_tern",       label = "Tern Colony"),
-  lake_umatilla    = list(kill = 40,  cause = "pikeminnow",       label = "Reservoir Predation"),
-  johnday_juv      = list(kill = 55,  cause = "dam_john_day",     label = "Dam Mortality"),
-  miller_rocks     = list(kill = 30,  cause = "avian_cormorant",  label = "Gull Colony"),
-  lake_celilo      = list(kill = 25,  cause = "pikeminnow",       label = "Reservoir Predation"),
-  thedalles_juv    = list(kill = 40,  cause = "dam_thedalles",    label = "Dam Mortality"),
-  lake_bonneville  = list(kill = 20,  cause = "predator_bass",    label = "Reservoir Predation"),
-  bonneville_juv   = list(kill = 15,  cause = "dam_bonneville",   label = "Dam Mortality"),
-  estuary          = list(kill = 7,   cause = "avian_tern",       label = "Estuary Predation"),
+  lower_ww         = list(kill = 30,  cause = "predator_bass",    label = "Bass Predation"),
+  crescent_island  = list(kill = 60,  cause = "avian_cormorant",  label = "Avian Predation"),
+  lake_wallula     = list(kill = 45,  cause = "pikeminnow",       label = "Mixed Predation"),
+  mcnary_juv       = list(kill = 55,  cause = "dam_mcnary",       label = "Dam Mortality"),
+  blalock_islands  = list(kill = 35,  cause = "avian_tern",       label = "Tern Colony"),
+  lake_umatilla    = list(kill = 30,  cause = "pikeminnow",       label = "Reservoir Predation"),
+  johnday_juv      = list(kill = 40,  cause = "dam_john_day",     label = "Dam Mortality"),
+  miller_rocks     = list(kill = 20,  cause = "avian_cormorant",  label = "Gull Colony"),
+  lake_celilo      = list(kill = 15,  cause = "pikeminnow",       label = "Reservoir Predation"),
+  thedalles_juv    = list(kill = 30,  cause = "dam_thedalles",    label = "Dam Mortality"),
+  lake_bonneville  = list(kill = 15,  cause = "predator_bass",    label = "Reservoir Predation"),
+  bonneville_juv   = list(kill = 10,  cause = "dam_bonneville",   label = "Dam Mortality"),
+  estuary          = list(kill = 5,   cause = "avian_tern",       label = "Estuary Predation"),
   # Ocean
   ocean_orca       = list(kill = 5,   cause = "ocean_orca",       label = "Orca Predation"),
   ocean_fishing    = list(kill = 8,   cause = "ocean_harvest",    label = "Commercial Fishing"),
@@ -44,8 +45,6 @@ MORTALITY <- list(
 )
 
 # ── Death screen images ───────────────────────────────────────────────────────
-# Replace URLs with local paths once artist delivers PNGs:
-#   e.g. "death_screens/avian_pelican.png"
 DEATH_IMAGES <- list(
   avian_pelican   = "death_screens/pelican.jpg",
   avian_merganser = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Mergus-merganser-001.jpg/640px-Mergus-merganser-001.jpg",

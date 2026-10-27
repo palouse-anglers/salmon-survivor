@@ -35,6 +35,7 @@ source("modules/mod_intro_video.R")
 INTRO_VIDEO_URL      <- "https://youtu.be/HxlAsTCAp4w?feature=shared"
 CORMORANT_VIDEO_URL  <- "https://www.dvidshub.net/video/embed/349996"
 DAM_VIDEO_URL        <- "https://www.pbs.org/video/nature-education-extreme-measures/"
+ADULT_VIDEO_URL      <- "https://www.youtube.com/embed/DhdPjh69jdM?si=DPgrUAOepHIFUSAL"
 
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),
@@ -87,13 +88,25 @@ ui <- page_navbar(
       )
     ),
 
+    # Adult return video — plays when Begin Adult Return is clicked
+    conditionalPanel(
+      condition = "output.show_adult_video",
+      mod_intro_video_ui(
+        "adult_video",
+        ADULT_VIDEO_URL,
+        title   = "\U0001f420 The Adult Return Journey",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
     # Main game layout
     conditionalPanel(
       condition = paste(
         "!output.show_pregame &&",
         "!output.show_intro_video &&",
         "!output.show_dam_video &&",
-        "!output.show_cormorant_video"
+        "!output.show_cormorant_video &&",
+        "!output.show_adult_video"
       ),
       layout_columns(
         col_widths = c(4, 8),
@@ -129,8 +142,13 @@ ui <- page_navbar(
   nav_panel("\U0001f9e0 Quiz",
     layout_columns(
       col_widths = c(7, 5),
-      card(card_header("Test Your Knowledge"), card_body(mod_quiz_ui("quiz"))),
       card(
+        style = "background-color: #0a1628; color: #e8f4fd; border: 1px solid #1e3a5f;",
+        card_header("Test Your Knowledge"),
+        card_body(mod_quiz_ui("quiz"))
+      ),
+      card(
+        style = "background-color: #0a1628; color: #e8f4fd; border: 1px solid #1e3a5f;",
         card_header("Key Facts"),
         card_body(
           tags$dl(

@@ -77,7 +77,7 @@ mod_map_server <- function(id, current_station, station_info_data) {
 
         # ── Predation hotspots from KMZ ───────────────────────────────────
         addCircles(
-          data        = AVIAN_HOTSPOTS,
+          data        = AVIAN_HOTSPOTS |> dplyr::filter(!is.na(lon), !is.na(lat)),
           lng         = ~lon, lat = ~lat,
           radius      = ~radius_m,
           color       = "#e74c3c", fillColor = "#e74c3c",
@@ -102,7 +102,7 @@ mod_map_server <- function(id, current_station, station_info_data) {
     observe({
       req(current_station())
       stn <- STATIONS |> dplyr::filter(id == current_station())
-      req(nrow(stn) > 0, !is.na(stn$lon))
+      req(nrow(stn) > 0, !is.na(stn$lon), !is.na(stn$lat))
 
       lat <- stn$lat[[1]]
       lng <- stn$lon[[1]]
@@ -110,7 +110,7 @@ mod_map_server <- function(id, current_station, station_info_data) {
       # flyTo via JS — reliably centers the map on the station
       map_id <- session$ns("map")
       shinyjs::runjs(sprintf(
-        "var map = HTMLWidgets.find('#%s').getMap(); map.flyTo([%f, %f], 9, {animate: true, duration: 1.2});",
+        "try { var map = HTMLWidgets.find('#%s').getMap(); if (map) { map.flyTo([%f, %f], 9, {animate: true, duration: 1.2}); } } catch(e) { console.warn('flyTo failed:', e); }",
         map_id, lat, lng
       ))
 
@@ -136,7 +136,7 @@ mod_map_server <- function(id, current_station, station_info_data) {
 
       # Show the floating info card
       shinyjs::runjs(sprintf(
-        "document.getElementById('%s').style.display='block'",
+        "try { document.getElementById('%s').style.display='block'; } catch(e) {}",
         ns("info_card")
       ))
     })

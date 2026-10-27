@@ -8,7 +8,7 @@ server <- function(input, output, session) {
 
   # ── Game state ──────────────────────────────────────────────────────────────
   gs <- reactiveValues(
-    phase                = "pregame",   # pregame | intro_video | dam_video | cormorant_video | playing | modal | done
+    phase                = "pregame",   # pregame | intro_video | dam_video | cormorant_video | adult_video | playing | modal | done
     step                 = 0,
     step_processed       = FALSE,  # TRUE once advance_to_step has run for current step
     cohort               = NULL,
@@ -19,7 +19,8 @@ server <- function(input, output, session) {
     journey_log          = NULL,
     current_ev           = NULL,
     dam_video_seen       = FALSE,
-    cormorant_video_seen = FALSE
+    cormorant_video_seen = FALSE,
+    adult_video_seen     = FALSE
   )
 
   # ── Load data ────────────────────────────────────────────────────────────────
@@ -51,17 +52,25 @@ server <- function(input, output, session) {
     ev <- gs$current_ev
     if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
     gs$phase                <- "playing"
-    gs$step_processed       <- TRUE        # next click -> modal
+    gs$step_processed       <- TRUE
+  })
+  mod_intro_video_server("adult_video", on_done = function() {
+    gs$adult_video_seen <- TRUE
+    next_step <- gs$step + 1
+    gs$phase  <- "playing"
+    advance_to_step(next_step)
   })
 
   output$show_pregame          <- reactive({ gs$phase == "pregame" })
   output$show_intro_video      <- reactive({ gs$phase == "intro_video" })
   output$show_dam_video        <- reactive({ gs$phase == "dam_video" })
   output$show_cormorant_video  <- reactive({ gs$phase == "cormorant_video" })
+  output$show_adult_video      <- reactive({ gs$phase == "adult_video" })
   outputOptions(output, "show_pregame",         suspendWhenHidden = FALSE)
   outputOptions(output, "show_intro_video",     suspendWhenHidden = FALSE)
   outputOptions(output, "show_dam_video",       suspendWhenHidden = FALSE)
   outputOptions(output, "show_cormorant_video", suspendWhenHidden = FALSE)
+  outputOptions(output, "show_adult_video",     suspendWhenHidden = FALSE)
 
   # ── Start / restart ───────────────────────────────────────────────────────────
   start_game <- function() {
@@ -88,6 +97,7 @@ server <- function(input, output, session) {
     gs$step_processed       <- FALSE
     gs$dam_video_seen       <- FALSE
     gs$cormorant_video_seen <- FALSE
+    gs$adult_video_seen     <- FALSE
   }
 
   # ── Advance to a step ────────────────────────────────────────────────────────
@@ -133,11 +143,10 @@ server <- function(input, output, session) {
       # ── Show cormorant video before the first cormorant event ─────────────
       } else if (!gs$cormorant_video_seen &&
           isTRUE(gs$current_ev$cause == "avian_cormorant")) {
-        # Defer n_alive update — count drops when modal shows after video
         gs$phase <- "cormorant_video"
       } else {
-        gs$n_alive <- row$n_arrive[1] - row$n_killed[1]
-        gs$phase   <- "modal"
+        # Don't update gs$n_alive here — defer to mortality_next (on Close)
+        gs$phase <- "modal"
       }
     } else {
       # No mortality — just update counter and move on
@@ -150,8 +159,8 @@ server <- function(input, output, session) {
   mortality_next <- function(fish_back) {
     ev <- gs$current_ev
 
-    # Kill already applied — just add quiz bonus if any
-    gs$n_alive <- gs$n_alive + fish_back
+    # Apply kill and quiz bonus together — dashboard only updates now (on Close)
+    gs$n_alive <- (ev$n_arrive %||% gs$n_alive) - (ev$n_killed %||% 0) + fish_back
 
     # Log
     gs$journey_log <- dplyr::bind_rows(
@@ -166,27 +175,15 @@ server <- function(input, output, session) {
       )
     )
 
-    # Advance
-    next_step <- gs$step + 1
-    if (next_step > length(all_stations)) {
-      gs$phase <- "done"
-    } else {
-      gs$phase <- "playing"
-      advance_to_step(next_step)
-    }
+    # Return to main screen — player clicks Next Stop to advance
+    gs$phase <- "playing"
   }
 
-  # ── Next stop button (non-modal stops) ───────────────────────────────────────
+  # ── Next stop button ──────────────────────────────────────────────────────────
   observeEvent(input$next_station, {
-    req(gs$phase %in% c("playing", "modal"))
-    if (gs$phase == "modal") {
-      mortality_next(mortality_fish_back())
-    } else if (!gs$step_processed) {
-      # First click after game start — process the current step
+    req(gs$phase == "playing")
+    if (!gs$step_processed) {
       advance_to_step(gs$step)
-    } else if (!is.null(gs$current_ev)) {
-      # Returning from a video — current_ev already set, just show the modal
-      gs$phase <- "modal"
     } else {
       next_step <- gs$step + 1
       if (next_step > length(all_stations)) {
@@ -200,9 +197,7 @@ server <- function(input, output, session) {
   # ── Ocean end → begin return ─────────────────────────────────────────────────
   observeEvent(input$begin_return, {
     req(gs$phase == "ocean_end")
-    next_step <- gs$step + 1
-    gs$phase  <- "playing"
-    advance_to_step(next_step)
+    gs$phase <- "adult_video"
   })
 
   # ── Modules ───────────────────────────────────────────────────────────────────

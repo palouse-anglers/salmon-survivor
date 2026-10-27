@@ -50,6 +50,9 @@ PREGAME_QUESTIONS <- list(
 
 # ── In-game questions — keyed to station id ───────────────────────────────────
 # fish_back = fish returned to cohort if answered correctly
+# 3 outbound quizzes x 50 fish = 150 potential fish back
+# On medium difficulty ~110 fish reach ocean without quizzes
+# 2 correct = ~210 fish reach ocean; 0 correct = ~110 fish (still winnable but close)
 INGAME_QUESTIONS <- list(
 
   quiz_1 = list(
@@ -64,8 +67,8 @@ INGAME_QUESTIONS <- list(
     ),
     correct    = 2,
     explain    = "Spill bypasses turbines entirely. Studies show spill can double juvenile survival at some dams — but it reduces power generation, creating a real tradeoff.",
-    fish_back  = 20,
-    bonus_text = "Spill program knowledge — 20 fish saved at McNary"
+    fish_back  = 50,
+    bonus_text = "Spill program knowledge — 50 fish saved at McNary"
   ),
 
   quiz_2 = list(
@@ -80,8 +83,8 @@ INGAME_QUESTIONS <- list(
     ),
     correct    = 3,
     explain    = "A single large pikeminnow can eat hundreds of smolts per season. The bounty program removes over 100,000 pikeminnow annually — one of the most cost-effective salmon survival tools available.",
-    fish_back  = 20,
-    bonus_text = "Pikeminnow bounty knowledge — 20 fish saved below John Day"
+    fish_back  = 50,
+    bonus_text = "Pikeminnow bounty knowledge — 50 fish saved below John Day"
   ),
 
   quiz_3 = list(
@@ -96,8 +99,8 @@ INGAME_QUESTIONS <- list(
     ),
     correct    = 1,
     explain    = "Nesting colonies position birds directly over the migration corridor. At peak migration a single colony can consume thousands of PIT-tagged smolts — we know because the tags are recovered at nest sites.",
-    fish_back  = 20,
-    bonus_text = "Avian predation knowledge — 20 fish saved near The Dalles"
+    fish_back  = 50,
+    bonus_text = "Avian predation knowledge — 50 fish saved near The Dalles"
   ),
 
   ocean_fishing = list(

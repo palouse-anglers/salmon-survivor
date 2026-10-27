@@ -1,6 +1,6 @@
 mod_mortality_ui <- function(id) {
   ns <- NS(id)
-  tagList()  # modal is shown via showModal, no inline UI needed
+  tagList()
 }
 
 mod_mortality_server <- function(id, mortality_event, on_next) {
@@ -11,7 +11,7 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
       quiz_answered = FALSE,
       quiz_correct  = FALSE,
       fish_back     = 0,
-      bonus_text    = NULL,
+      bonus_text    = NULL
     )
 
     # Show modal when new event fires
@@ -21,99 +21,101 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
       rv$fish_back     <- 0
       rv$bonus_text    <- NULL
 
-      ev         <- mortality_event()
-      img_src    <- DEATH_IMAGES[[ev$cause]] %||% DEATH_IMAGES[["placeholder"]]
-      narrative  <- gsub("\\{n\\}", ev$n_killed,
-                    gsub("\\{remaining\\}", ev$n_arrive - ev$n_killed,
-                    DEATH_NARRATIVES[[ev$cause]] %||% DEATH_NARRATIVES[["other"]]))
+      ev          <- mortality_event()
+      img_src     <- DEATH_IMAGES[[ev$cause]] %||% DEATH_IMAGES[["placeholder"]]
+      narrative   <- gsub("\\{n\\}", ev$n_killed,
+                     gsub("\\{remaining\\}", ev$n_arrive - ev$n_killed,
+                     DEATH_NARRATIVES[[ev$cause]] %||% DEATH_NARRATIVES[["other"]]))
       cause_label <- gsub("_", " ", toupper(ev$cause %||% "mortality"))
-
-      is_quiz <- ev$cause %in% c("other", "quiz")
+      is_quiz     <- ev$cause %in% c("other", "quiz")
 
       showModal(modalDialog(
-        title = NULL,
-        easyClose = !is_quiz,
-        footer = if (is_quiz) uiOutput(ns("quiz_footer")) else modalButton("Close"),
-        size = "m",
+        title     = NULL,
+        easyClose = FALSE,
+        footer    = uiOutput(ns("modal_footer")),
+        size      = "m",
 
         div(style = "font-size:1.4em; font-weight:900; color:#e74c3c; margin-bottom:6px;",
-            if (ev$cause %in% c("other", "quiz"))
-              paste0("\U0001f4dd Quiz Time")
-            else
-              paste0("\U0001f480 -", ev$n_killed, " fish")),
+            if (is_quiz) "\U0001f4dd Quiz Time"
+            else paste0("\U0001f480 -", ev$n_killed, " fish")),
 
         p(style = "color:#555; font-size:0.9em; line-height:1.5; margin-bottom:14px;",
           narrative),
 
-        # ── Math breakdown ────────────────────────────────────────────
+        # ── Math breakdown ──────────────────────────────────────────────────
         div(
           style = "background:#f8f8f8; border:1px solid #ddd; border-radius:6px;
                    padding:12px 14px; font-family:monospace; font-size:0.85em;
                    margin-bottom:14px;",
-
           div(style = "color:#888; font-size:0.78em; text-transform:uppercase;
                        letter-spacing:0.5px; margin-bottom:8px;",
               "Mortality Calculation"),
-
           div(style = "display:flex; justify-content:space-between; padding:3px 0;
                        border-bottom:1px solid #eee;",
-            span(style="color:#555;", "Fish arriving"),
+            span(style = "color:#555;", "Fish arriving"),
             span(paste0(ev$n_arrive, " fish"))
           ),
           div(style = "display:flex; justify-content:space-between; padding:3px 0;
                        border-bottom:1px solid #eee;",
-            span(style="color:#555;", ev$label %||% cause_label),
-            span(style="color:#e74c3c; font-weight:bold;", paste0("-", ev$n_killed, " fish"))
+            span(style = "color:#555;", ev$label %||% cause_label),
+            span(style = "color:#e74c3c; font-weight:bold;", paste0("-", ev$n_killed, " fish"))
           ),
           uiOutput(ns("bonus_row")),
           div(style = "display:flex; justify-content:space-between; padding:6px 0 2px;
                        margin-top:4px; border-top:1px solid #ccc;",
-            span(style="font-weight:700;", "Survivors"),
+            span(style = "font-weight:700;", "Survivors"),
             uiOutput(ns("survivor_count"), inline = TRUE)
           )
         ),
 
-        # ── Quiz section ──────────────────────────────────────────────
+        # ── Quiz section (only for quiz events) ────────────────────────────
         uiOutput(ns("quiz_section")),
 
-        # ── Image at bottom ───────────────────────────────────────────
-        tags$img(src = img_src,
+        # ── Image ───────────────────────────────────────────────────────────
+        tags$img(src   = img_src,
                  style = "width:100%; display:block; border-radius:6px; margin-top:14px;")
       ))
     })
 
-    # Close modal
+    # ── Footer: always a server-side button so on_next is always called ────
+    output$modal_footer <- renderUI({
+      ev      <- mortality_event()
+      is_quiz <- !is.null(ev) && ev$cause %in% c("other", "quiz")
+      if (is_quiz && !rv$quiz_answered) {
+        # Don't show Close until quiz is answered
+        NULL
+      } else {
+        actionButton(ns("close_modal"), "Close", class = "btn-primary")
+      }
+    })
+
+    # Single close handler for ALL modals — always calls on_next
     observeEvent(input$close_modal, {
       removeModal()
+      on_next(rv$fish_back)
     })
 
-    # Quiz footer — only show Close button once quiz is answered
-    output$quiz_footer <- renderUI({
-      req(rv$quiz_answered)
-      modalButton("Close")
-    })
-
-    # Survivor count
+    # ── Survivor count ─────────────────────────────────────────────────────
     output$survivor_count <- renderUI({
-      ev      <- mortality_event()
+      ev  <- mortality_event()
       req(!is.null(ev))
-      net     <- ev$n_arrive - ev$n_killed + rv$fish_back
+      net <- ev$n_arrive - ev$n_killed + rv$fish_back
       span(style = paste0("font-weight:900; font-size:1.05em; ",
                           if (net > 0) "color:#2d8a4e;" else "color:#e74c3c;"),
            paste0(net, " fish"))
     })
 
-    # Bonus row (shows after correct answer)
+    # ── Bonus row ──────────────────────────────────────────────────────────
     output$bonus_row <- renderUI({
       req(rv$quiz_answered, rv$fish_back > 0)
       div(style = "display:flex; justify-content:space-between; padding:3px 0;
                    border-bottom:1px solid #eee;",
-        span(style="color:#2d8a4e;", paste0("\u2705 ", rv$bonus_text %||% "Quiz bonus")),
-        span(style="color:#2d8a4e; font-weight:bold;", paste0("+", rv$fish_back, " fish"))
+        span(style = "color:#2d8a4e;", paste0("\u2705 ", rv$bonus_text %||% "Quiz bonus")),
+        span(style = "color:#2d8a4e; font-weight:bold;", paste0("+", rv$fish_back, " fish"))
       )
     })
 
-    # Quiz section
+    # ── Quiz section ───────────────────────────────────────────────────────
     output$quiz_section <- renderUI({
       ev <- mortality_event()
       q  <- INGAME_QUESTIONS[[ev$station]]
@@ -123,45 +125,40 @@ mod_mortality_server <- function(id, mortality_event, on_next) {
         div(
           style = "background:#eaf4fb; border:1px solid #aed6f1; border-radius:8px;
                    padding:14px 16px;",
-          div(style="font-size:0.72em; color:#e67e22; text-transform:uppercase;
-                     letter-spacing:1px; margin-bottom:6px;",
+          div(style = "font-size:0.72em; color:#e67e22; text-transform:uppercase;
+                       letter-spacing:1px; margin-bottom:6px;",
               paste0("\u26a1 Earn some back! Correct = +", q$fish_back, " fish")),
-          p(style="font-size:0.9em; margin-bottom:10px;", q$q),
+          p(style = "font-size:0.9em; margin-bottom:10px; color:#1a1a2e; font-weight:600;",
+            q$q),
           lapply(seq_along(q$choices), function(i) {
             actionButton(
               ns(paste0("ans_", i)), q$choices[i],
               class = "btn-outline-primary w-100 mb-2 text-start",
-              style = "padding:8px 12px; font-size:0.85em;"
+              style = "padding:8px 12px; font-size:0.85em; color:#1a1a2e; background-color:#ffffff;"
             )
           })
         )
       } else {
         div(
           style = paste0("border-radius:8px; padding:12px 16px; ",
-            if (rv$quiz_correct)
-              "background:#eafaf1; border:1px solid #2d8a4e;"
-            else
-              "background:#fdf0f0; border:1px solid #c0392b;"
-          ),
+            if (rv$quiz_correct) "background:#eafaf1; border:1px solid #2d8a4e;"
+            else                 "background:#fdf0f0; border:1px solid #c0392b;"),
           div(style = paste0("font-weight:700; margin-bottom:6px; ",
-                if(rv$quiz_correct) "color:#2d8a4e;" else "color:#c0392b;"),
-              if(rv$quiz_correct)
-                paste0("\u2705 Correct! +", rv$fish_back, " fish returned")
-              else
-                "\u274c Incorrect — no fish earned back"
-          ),
-          p(style="margin:0; font-size:0.82em; color:#555;", q$explain)
+                if (rv$quiz_correct) "color:#2d8a4e;" else "color:#c0392b;"),
+              if (rv$quiz_correct) paste0("\u2705 Correct! +", rv$fish_back, " fish returned")
+              else                 "\u274c Incorrect — no fish earned back"),
+          p(style = "margin:0; font-size:0.82em; color:#555;", q$explain)
         )
       }
     })
 
-    # Quiz answer handlers
+    # ── Quiz answer handlers ───────────────────────────────────────────────
     lapply(seq_len(4), function(i) {
       observeEvent(input[[paste0("ans_", i)]], {
         if (!rv$quiz_answered) {
           q <- INGAME_QUESTIONS[[mortality_event()$station]]
           req(!is.null(q))
-          correct <- (i == q$correct)
+          correct          <- (i == q$correct)
           rv$quiz_correct  <- correct
           rv$quiz_answered <- TRUE
           rv$fish_back     <- if (correct) q$fish_back else 0
