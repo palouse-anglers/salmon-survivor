@@ -36,6 +36,10 @@ INTRO_VIDEO_URL      <- "https://youtu.be/HxlAsTCAp4w?feature=shared"
 CORMORANT_VIDEO_URL  <- "https://www.dvidshub.net/video/embed/349996"
 DAM_VIDEO_URL        <- "https://www.pbs.org/video/nature-education-extreme-measures/"
 ADULT_VIDEO_URL      <- "https://www.youtube.com/embed/DhdPjh69jdM?si=DPgrUAOepHIFUSAL"
+SEALION_VIDEO_URL    <- "https://www.youtube.com/embed/THS7y0MUxJs?si=rzcudTTwtS12b--c"
+WALLAWALLA_VIDEO_URL <- "https://www.youtube.com/embed/Oc4tmKEmvVE?si=tVxUROiF6ucHTPa9"
+FISHLADDER_VIDEO_URL <- "https://www.youtube.com/embed/gbASPedQKHU?si=7O2vruM4_t2U-dWs"
+GASBUBBLE_VIDEO_URL  <- "https://www.youtube.com/embed/Hyg830gqLoU?si=nJ66a4Vxn2rVhnu-&start=212&end=355"
 
 ui <- page_navbar(
   title        = tags$span("\U0001f41f Salmon Survivor"),
@@ -64,6 +68,17 @@ ui <- page_navbar(
     conditionalPanel(
       condition = "output.show_intro_video",
       mod_intro_video_ui("intro_video", INTRO_VIDEO_URL)
+    ),
+
+    # Walla Walla video — plays after intro, before first stop
+    conditionalPanel(
+      condition = "output.show_wallawalla_video",
+      mod_intro_video_ui(
+        "wallawalla_video",
+        WALLAWALLA_VIDEO_URL,
+        title   = "\U0001f3d4\ufe0f The Walla Walla Watershed",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
     ),
 
     # Dam video — plays before the first dam event
@@ -99,14 +114,51 @@ ui <- page_navbar(
       )
     ),
 
+    # Sea lion video — plays before the adult_sealion station
+    conditionalPanel(
+      condition = "output.show_sealion_video",
+      mod_intro_video_ui(
+        "sealion_video",
+        SEALION_VIDEO_URL,
+        title   = "\U0001f9ad Sea Lions at Bonneville Dam",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
+    # Fish ladder video — plays before The Dalles Dam event
+    conditionalPanel(
+      condition = "output.show_fishladder_video",
+      mod_intro_video_ui(
+        "fishladder_video",
+        FISHLADDER_VIDEO_URL,
+        title   = "\U0001f4a7 Fish Ladders at The Dalles Dam",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
+    # Gas bubble disease video — plays before John Day Dam event
+    conditionalPanel(
+      condition = "output.show_gasbubble_video",
+      mod_intro_video_ui(
+        "gasbubble_video",
+        GASBUBBLE_VIDEO_URL,
+        title   = "\U0001f6ab Gas Bubble Disease at John Day Dam",
+        btn_lbl = "\u23ed\ufe0f Skip \u2192 Continue"
+      )
+    ),
+
     # Main game layout
     conditionalPanel(
       condition = paste(
         "!output.show_pregame &&",
         "!output.show_intro_video &&",
+        "!output.show_wallawalla_video &&",
         "!output.show_dam_video &&",
         "!output.show_cormorant_video &&",
-        "!output.show_adult_video"
+        "!output.show_adult_video &&",
+        "!output.show_sealion_video &&",
+        "!output.show_fishladder_video &&",
+        "!output.show_gasbubble_video"
       ),
       layout_columns(
         col_widths = c(4, 8),

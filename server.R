@@ -18,9 +18,12 @@ server <- function(input, output, session) {
     start_loc            = NULL,
     journey_log          = NULL,
     current_ev           = NULL,
-    dam_video_seen       = FALSE,
-    cormorant_video_seen = FALSE,
-    adult_video_seen     = FALSE
+    dam_video_seen        = FALSE,
+    gasbubble_video_seen  = FALSE,
+    fishladder_video_seen = FALSE,
+    cormorant_video_seen  = FALSE,
+    adult_video_seen      = FALSE,
+    sealion_video_seen    = FALSE
   )
 
   # ── Load data ────────────────────────────────────────────────────────────────
@@ -37,18 +40,33 @@ server <- function(input, output, session) {
   }
 
   mod_pregame_quiz_server("pregame", on_complete = pregame_done)
-  mod_intro_video_server("intro_video", on_done = start_game)
+  mod_intro_video_server("intro_video", on_done = function() {
+    gs$phase <- "wallawalla_video"
+  })
+  mod_intro_video_server("wallawalla_video", on_done = start_game)
   mod_intro_video_server("dam_video", on_done = function() {
     gs$dam_video_seen <- TRUE
-    # Apply deferred fish count drop now that video is done
     ev <- gs$current_ev
     if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
     gs$phase          <- "playing"
-    gs$step_processed <- TRUE        # next click -> modal
+    gs$step_processed <- TRUE
+  })
+  mod_intro_video_server("gasbubble_video", on_done = function() {
+    gs$gasbubble_video_seen <- TRUE
+    ev <- gs$current_ev
+    if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
+    gs$phase          <- "playing"
+    gs$step_processed <- TRUE
+  })
+  mod_intro_video_server("fishladder_video", on_done = function() {
+    gs$fishladder_video_seen <- TRUE
+    ev <- gs$current_ev
+    if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
+    gs$phase          <- "playing"
+    gs$step_processed <- TRUE
   })
   mod_intro_video_server("cormorant_video", on_done = function() {
     gs$cormorant_video_seen <- TRUE
-    # Apply deferred fish count drop now that video is done
     ev <- gs$current_ev
     if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
     gs$phase                <- "playing"
@@ -60,17 +78,32 @@ server <- function(input, output, session) {
     gs$phase  <- "playing"
     advance_to_step(next_step)
   })
+  mod_intro_video_server("sealion_video", on_done = function() {
+    gs$sealion_video_seen <- TRUE
+    ev <- gs$current_ev
+    if (!is.null(ev)) gs$n_alive <- ev$n_arrive - ev$n_killed
+    gs$phase          <- "playing"
+    gs$step_processed <- TRUE
+  })
 
-  output$show_pregame          <- reactive({ gs$phase == "pregame" })
-  output$show_intro_video      <- reactive({ gs$phase == "intro_video" })
-  output$show_dam_video        <- reactive({ gs$phase == "dam_video" })
-  output$show_cormorant_video  <- reactive({ gs$phase == "cormorant_video" })
-  output$show_adult_video      <- reactive({ gs$phase == "adult_video" })
-  outputOptions(output, "show_pregame",         suspendWhenHidden = FALSE)
-  outputOptions(output, "show_intro_video",     suspendWhenHidden = FALSE)
-  outputOptions(output, "show_dam_video",       suspendWhenHidden = FALSE)
-  outputOptions(output, "show_cormorant_video", suspendWhenHidden = FALSE)
-  outputOptions(output, "show_adult_video",     suspendWhenHidden = FALSE)
+  output$show_pregame           <- reactive({ gs$phase == "pregame" })
+  output$show_intro_video       <- reactive({ gs$phase == "intro_video" })
+  output$show_wallawalla_video  <- reactive({ gs$phase == "wallawalla_video" })
+  output$show_dam_video         <- reactive({ gs$phase == "dam_video" })
+  output$show_gasbubble_video   <- reactive({ gs$phase == "gasbubble_video" })
+  output$show_fishladder_video  <- reactive({ gs$phase == "fishladder_video" })
+  output$show_cormorant_video   <- reactive({ gs$phase == "cormorant_video" })
+  output$show_adult_video       <- reactive({ gs$phase == "adult_video" })
+  output$show_sealion_video     <- reactive({ gs$phase == "sealion_video" })
+  outputOptions(output, "show_pregame",          suspendWhenHidden = FALSE)
+  outputOptions(output, "show_intro_video",      suspendWhenHidden = FALSE)
+  outputOptions(output, "show_wallawalla_video", suspendWhenHidden = FALSE)
+  outputOptions(output, "show_dam_video",        suspendWhenHidden = FALSE)
+  outputOptions(output, "show_gasbubble_video",  suspendWhenHidden = FALSE)
+  outputOptions(output, "show_fishladder_video", suspendWhenHidden = FALSE)
+  outputOptions(output, "show_cormorant_video",  suspendWhenHidden = FALSE)
+  outputOptions(output, "show_adult_video",      suspendWhenHidden = FALSE)
+  outputOptions(output, "show_sealion_video",    suspendWhenHidden = FALSE)
 
   # ── Start / restart ───────────────────────────────────────────────────────────
   start_game <- function() {
@@ -95,9 +128,12 @@ server <- function(input, output, session) {
     gs$current_ev           <- NULL
     gs$step                 <- 0
     gs$step_processed       <- FALSE
-    gs$dam_video_seen       <- FALSE
-    gs$cormorant_video_seen <- FALSE
-    gs$adult_video_seen     <- FALSE
+    gs$dam_video_seen        <- FALSE
+    gs$gasbubble_video_seen  <- FALSE
+    gs$fishladder_video_seen <- FALSE
+    gs$cormorant_video_seen  <- FALSE
+    gs$adult_video_seen      <- FALSE
+    gs$sealion_video_seen    <- FALSE
   }
 
   # ── Advance to a step ────────────────────────────────────────────────────────
@@ -138,14 +174,24 @@ server <- function(input, output, session) {
       # ── Show dam video before the first dam event ─────────────────────────
       if (!gs$dam_video_seen &&
           isTRUE(startsWith(gs$current_ev$cause, "dam_"))) {
-        # Defer n_alive update — count drops when modal shows after video
         gs$phase <- "dam_video"
+      # ── Show gas bubble video before John Day Dam ──────────────────────────
+      } else if (!gs$gasbubble_video_seen &&
+          isTRUE(gs$current_ev$cause == "dam_john_day")) {
+        gs$phase <- "gasbubble_video"
+      # ── Show fish ladder video before The Dalles Dam ───────────────────────
+      } else if (!gs$fishladder_video_seen &&
+          isTRUE(gs$current_ev$cause == "dam_thedalles")) {
+        gs$phase <- "fishladder_video"
       # ── Show cormorant video before the first cormorant event ─────────────
       } else if (!gs$cormorant_video_seen &&
           isTRUE(gs$current_ev$cause == "avian_cormorant")) {
         gs$phase <- "cormorant_video"
+      # ── Show sea lion video before the first sea lion event ───────────────
+      } else if (!gs$sealion_video_seen &&
+          isTRUE(gs$current_ev$cause == "sealion")) {
+        gs$phase <- "sealion_video"
       } else {
-        # Don't update gs$n_alive here — defer to mortality_next (on Close)
         gs$phase <- "modal"
       }
     } else {
